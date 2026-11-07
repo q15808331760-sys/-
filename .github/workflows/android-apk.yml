@@ -111,7 +111,7 @@ jobs:
           set -euxo pipefail
           mkdir -p build
           grep -F 'gradle_build/use_gradle_build=true' export_presets.cfg
-          godot --headless --path . --install-android-build-template --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk
+          godot --headless --verbose --path . --install-android-build-template --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk
           test -s build/Pokemon_Battle_Lab_Remake-debug.apk
 
       - name: Verify APK metadata and signature
