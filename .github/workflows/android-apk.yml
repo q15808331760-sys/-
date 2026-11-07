@@ -108,7 +108,7 @@ jobs:
         working-directory: Pokemon_Battle_Lab_Remake
         run: |
           mkdir -p build
-          godot --headless --path . --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk
+          godot --headless --path . --install-android-build-template --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk
           test -s build/Pokemon_Battle_Lab_Remake-debug.apk
 
       - name: Verify APK metadata and signature
