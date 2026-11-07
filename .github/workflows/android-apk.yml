@@ -104,18 +104,6 @@ jobs:
         working-directory: Pokemon_Battle_Lab_Remake
         run: timeout 120s godot --headless --path . --script res://tests/test_net_battle_session.gd
 
-      - name: Install Android Gradle build template
-        working-directory: Pokemon_Battle_Lab_Remake
-        shell: bash
-        run: |
-          set -euxo pipefail
-          godot --headless --editor --path . --install-android-build-template --quit
-          if [[ ! -f android/build/gradlew ]]; then
-            echo "::error::Godot Android Gradle template was not installed into android/build"
-            find android -maxdepth 3 -type f | sort | head -100 || true
-            exit 1
-          fi
-
       - name: Export Android APK
         working-directory: Pokemon_Battle_Lab_Remake
         shell: bash
@@ -123,7 +111,7 @@ jobs:
           set -euxo pipefail
           mkdir -p build
           grep -F 'gradle_build/use_gradle_build=true' export_presets.cfg
-          godot --headless --path . --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk
+          godot --headless --path . --install-android-build-template --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk
           test -s build/Pokemon_Battle_Lab_Remake-debug.apk
 
       - name: Verify APK metadata and signature
