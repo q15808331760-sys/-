@@ -5,7 +5,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'Pokemon_Battle_Lab_Remake_v1.0.2_Android_Compatibility_Hardened.zip'
+      - 'Pokemon_Battle_Lab_Remake*_v1.0.2.zip'
       - '.github/workflows/android-apk.yml'
 
 jobs:
@@ -19,9 +19,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Extract optimized source archive
+        shell: bash
         run: |
-          test -s Pokemon_Battle_Lab_Remake_v1.0.2_Android_Compatibility_Hardened.zip
-          unzip -q Pokemon_Battle_Lab_Remake_v1.0.2_Android_Compatibility_Hardened.zip 'Pokemon_Battle_Lab_Remake/*' -d .
+          set -euo pipefail
+          SOURCE_ARCHIVE="$(find . -maxdepth 1 -type f -name 'Pokemon_Battle_Lab_Remake*_v1.0.2.zip' -print -quit)"
+          if [[ -z "$SOURCE_ARCHIVE" ]]; then
+            echo "::error::No Pokemon_Battle_Lab_Remake v1.0.2 ZIP archive found in repository root."
+            echo "Root files:"
+            ls -lah
+            exit 1
+          fi
+          echo "Using source archive: $SOURCE_ARCHIVE"
+          unzip -t "$SOURCE_ARCHIVE"
+          unzip -q "$SOURCE_ARCHIVE" 'Pokemon_Battle_Lab_Remake/*' -d .
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
 
