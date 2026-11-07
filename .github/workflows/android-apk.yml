@@ -137,26 +137,8 @@ jobs:
           echo "$BADGING" | grep -F "native-code: 'arm64-v8a' 'x86_64'"
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$APK"
 
-      - name: Install and launch on Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          profile: pixel_2
-          script: |
-            APK="Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"
-            adb install -r "$APK"
-            adb shell monkey -p com.pbl.remake 1
-            for attempt in $(seq 1 20); do
-              if adb shell pidof com.pbl.remake >/dev/null 2>&1; then
-                echo "APK installed and application process started."
-                exit 0
-              fi
-              sleep 2
-            done
-            adb logcat -d -t 1200
-            exit 1
-
+      # Publish the signed APK before emulator validation so a runtime-test
+      # failure never prevents the user from retrieving the already-verified build.
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -164,3 +146,11 @@ jobs:
           path: Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Install and launch on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_2
+          script: bash -euo pipefail -c 'APK="$GITHUB_WORKSPACE/Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"; test -s "$APK"; adb install -r "$APK"; adb shell monkey -p com.pbl.remake 1; for attempt in $(seq 1 30); do if adb shell pidof com.pbl.remake >/dev/null 2>&1; then echo "APK installed and application process started."; exit 0; fi; sleep 2; done; echo "::error::Application process did not start; recent logcat follows."; adb logcat -d -t 2000; exit 1'
