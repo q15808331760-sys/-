@@ -21,7 +21,7 @@ jobs:
       - name: Extract optimized source archive
         run: |
           test -s Pokemon_Battle_Lab_Remake_v1.0.2_Android_Compatibility_Hardened.zip
-          unzip -q Pokemon_Battle_Lab_Remake_v1.0.2_Android_Compatibility_Hardened.zip -d .
+          unzip -q Pokemon_Battle_Lab_Remake_v1.0.2_Android_Compatibility_Hardened.zip 'Pokemon_Battle_Lab_Remake/*' -d .
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
 
