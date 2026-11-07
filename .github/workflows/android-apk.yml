@@ -88,19 +88,19 @@ jobs:
 
       - name: Validate project and GDScript
         working-directory: Pokemon_Battle_Lab_Remake
-        run: godot --headless --editor --path . --quit
+        run: timeout 120s godot --headless --editor --path . --quit
 
       - name: Run battle engine tests
         working-directory: Pokemon_Battle_Lab_Remake
-        run: godot --headless --path . --script res://tests/test_battle_engine.gd
+        run: timeout 120s godot --headless --path . --script res://tests/test_battle_engine.gd
 
       - name: Run LAN network tests
         working-directory: Pokemon_Battle_Lab_Remake
-        run: godot --headless --path . --script res://tests/test_lan_network.gd
+        run: timeout 120s godot --headless --path . --script res://tests/test_lan_network.gd
 
       - name: Run authoritative LAN battle tests
         working-directory: Pokemon_Battle_Lab_Remake
-        run: godot --headless --path . --script res://tests/test_net_battle_session.gd
+        run: timeout 120s godot --headless --path . --script res://tests/test_net_battle_session.gd
 
       - name: Export Android APK
         working-directory: Pokemon_Battle_Lab_Remake
