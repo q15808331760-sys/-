@@ -34,6 +34,8 @@ jobs:
           unzip -q "$SOURCE_ARCHIVE" 'Pokemon_Battle_Lab_Remake/*' -d .
           # Apply the CI compatibility fix for a Godot 4.4 Variant inference error.
           cp .github/ci/test_net_battle_session.gd Pokemon_Battle_Lab_Remake/tests/test_net_battle_session.gd
+          # Godot requires Gradle export when overriding Android min/target SDK.
+          sed -i 's/^gradle_build\/use_gradle_build=false$/gradle_build\/use_gradle_build=true/' Pokemon_Battle_Lab_Remake/export_presets.cfg
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
 
