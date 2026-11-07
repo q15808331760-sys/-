@@ -102,15 +102,6 @@ func _initialize() -> void:
 	for i in range(81):
 		malformed_snapshot.logs.append("overflow")
 	assert(not invalid_replica.apply_authoritative_snapshot(malformed_snapshot), "Replica must reject oversized log arrays")
-	host.free()
-	client.free()
-	timeout_host.free()
-	timed_host.free()
-	timed_replica.free()
-	pending_host.free()
-	pending_client.free()
-	resumed_client.free()
-	no_action_host.free()
-	invalid_replica.free()
+	# Session extends RefCounted; instances are released automatically when references leave scope.
 	print("PBL network battle session tests passed")
 	quit(0)
