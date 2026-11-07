@@ -39,6 +39,14 @@ jobs:
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
 
+      - name: Upload extracted Godot project for diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: Godot-Android-Project-Inspection
+          path: Pokemon_Battle_Lab_Remake/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
