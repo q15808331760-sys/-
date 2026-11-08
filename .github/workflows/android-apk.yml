@@ -76,6 +76,9 @@ jobs:
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
 
+      - name: Emit extracted startup source for real-device diagnosis
+        run: python3 .github/ci/print_startup_source.py
+
       - name: Apply GBA-inspired landscape redesign
         run: |
           set -euo pipefail
