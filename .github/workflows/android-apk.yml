@@ -39,10 +39,10 @@ jobs:
           cp .github/ci/test_audio_save.gd Pokemon_Battle_Lab_Remake/tests/test_audio_save.gd
           # Godot requires Gradle export when overriding Android min/target SDK.
           sed -i 's/^gradle_build\/use_gradle_build=false$/gradle_build\/use_gradle_build=true/' Pokemon_Battle_Lab_Remake/export_presets.cfg
-          # The Compatibility renderer supports older Android devices; keep min SDK API 23.
-          sed -i 's/^gradle_build\/min_sdk="28"$/gradle_build\/min_sdk="23"/' Pokemon_Battle_Lab_Remake/export_presets.cfg
-          sed -i 's/Android minimum SDK must remain explicitly pinned to 28/Android minimum SDK must remain explicitly pinned to 23/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
-          sed -i 's/gradle_build\/min_sdk="28"/gradle_build\/min_sdk="23"/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
+          # Godot 4.6.3 Android library requires min SDK API 24; Android 14 devices remain supported.
+          sed -i 's/^gradle_build\/min_sdk="28"$/gradle_build\/min_sdk="24"/' Pokemon_Battle_Lab_Remake/export_presets.cfg
+          sed -i 's/Android minimum SDK must remain explicitly pinned to 28/Android minimum SDK must remain explicitly pinned to 24/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
+          sed -i 's/gradle_build\/min_sdk="28"/gradle_build\/min_sdk="24"/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
           # Android exports on x86_64 Linux must import ETC2/ASTC texture variants.
           if ! grep -q '^textures/vram_compression/import_etc2_astc=' Pokemon_Battle_Lab_Remake/project.godot; then
             sed -i '/^\[rendering\]/a textures/vram_compression/import_etc2_astc=true' Pokemon_Battle_Lab_Remake/project.godot
@@ -158,7 +158,7 @@ jobs:
       - name: Install Android platform and build tools
         run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Set up Godot 4.4.1 and export templates
+      - name: Set up Godot 4.6.3 and export templates
         uses: chickensoft-games/setup-godot@v2
         with:
           version: 4.6.3
@@ -257,7 +257,7 @@ jobs:
           APK="Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK")"
           echo "$BADGING" | grep -F "package: name='com.pbl.remake'"
-          echo "$BADGING" | grep -F "sdkVersion:'23'"
+          echo "$BADGING" | grep -F "sdkVersion:'24'"
           echo "$BADGING" | grep -F "targetSdkVersion:'34'"
           echo "$BADGING" | grep -F "native-code: 'arm64-v8a' 'x86_64'"
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$APK"
