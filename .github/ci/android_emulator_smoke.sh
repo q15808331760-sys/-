@@ -205,4 +205,42 @@ if grep -E "FATAL EXCEPTION.*$PACKAGE|Process: $PACKAGE([[:space:]]|$)|Fatal sig
   echo "::error::Android reported a fatal crash in $PACKAGE."
   exit 1
 fi
-echo "Android install/launch/render smoke test passed: pid=$APP_PID_AFTER, foreground activity=$PACKAGE"
+# Verify that the rendered screen is not merely a flat background and that
+# Godot receives a real touch event. Navigate to the second top-row tab
+# (Teams) using screen-relative coordinates, then compare the rendered frame.
+SCREEN_SIZE="$(adb shell wm size | sed -n 's/.*: *\([0-9][0-9]*x[0-9][0-9]*\).*/\1/p' | tail -n 1)"
+if [[ -z "$SCREEN_SIZE" ]]; then
+  echo "::error::Could not determine emulator screen dimensions for touch validation."
+  exit 1
+fi
+read -r SCREEN_W SCREEN_H <<< "${SCREEN_SIZE/x/ }"
+python3 - "$OUT/android-startup.png" <<'PY'
+from PIL import Image
+import sys
+im = Image.open(sys.argv[1]).convert("RGB")
+colors = len(im.getcolors(maxcolors=im.width * im.height) or [])
+# Require a textured UI, not only the broad flat GBA background color.
+print(f"Rendered UI validation: size={im.size}, unique_colors={colors}")
+if colors < 100:
+    raise SystemExit("Rendered UI is too visually uniform; possible blank/gray surface.")
+PY
+adb shell input tap "$((SCREEN_W / 4))" "$((SCREEN_H / 10))"
+sleep 2
+adb exec-out screencap -p > "$OUT/android-after-touch.png"
+python3 - "$OUT/android-startup.png" "$OUT/android-after-touch.png" <<'PY'
+from PIL import Image, ImageChops
+import sys
+before, after = [Image.open(p).convert("RGB") for p in sys.argv[1:]]
+if before.size != after.size:
+    raise SystemExit("Screen size changed during touch test.")
+diff = ImageChops.difference(before, after)
+changed = sum(1 for p in diff.getdata() if max(p) > 18)
+ratio = changed / (before.width * before.height)
+print(f"Touch response validation: changed_pixels={changed}, ratio={ratio:.4%}")
+if ratio < 0.002:
+    raise SystemExit("Touch did not produce a visible UI change; possible unresponsive screen.")
+PY
+# Return to the home tab so the emulator is left in a predictable state.
+adb shell input tap "$((SCREEN_W / 12))" "$((SCREEN_H / 10))"
+sleep 1
+echo "Android install/launch/render/touch smoke test passed: pid=$APP_PID_AFTER, foreground activity=$PACKAGE"
