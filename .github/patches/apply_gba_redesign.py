@@ -194,5 +194,17 @@ net = needle + "\tvar net_arena := TextureRect.new()\n\tnet_arena.custom_minimum
 if needle not in s:
     raise SystemExit("Could not locate LAN battle HUD insertion point")
 s = s.replace(needle, net, 1)
+# Match the local battle command layout in LAN battles; action callbacks stay identical.
+old = "\t\t\tfor i in range(moves.size()):\n\t\t\t\t_add_action(content, \"使用技能：\" + str(moves[i]), _submit_online_action.bind({\"type\":\"move\", \"index\":i}))"
+new = "\t\t\tvar net_move_grid := GridContainer.new()\n\t\t\tnet_move_grid.columns = 2\n\t\t\tnet_move_grid.add_theme_constant_override(\"h_separation\", 8)\n\t\t\tnet_move_grid.add_theme_constant_override(\"v_separation\", 8)\n\t\t\tcontent.add_child(net_move_grid)\n\t\t\tfor i in range(moves.size()):\n\t\t\t\t_add_action(net_move_grid, \"使用技能：\" + str(moves[i]), _submit_online_action.bind({\"type\":\"move\", \"index\":i}))"
+if old not in s:
+    raise SystemExit("Could not locate LAN move menu")
+s = s.replace(old, new, 1)
+# Give each LAN combatant a compact HP gauge driven only by the received snapshot.
+hp_anchor = '\t\t_add_label("%s方：%s  HP %d/%d  状态：%s" % ["红" if side == "red" else "蓝", mon.get("name", "宝可梦"), int(mon.get("hp", 0)), int(mon.get("max_hp", mon.get("hp", 1))), _status_label(str(mon.get("status", "")))], 17)\n'
+hp_extra = hp_anchor + '\t\tvar net_hp := ProgressBar.new()\n\t\tnet_hp.max_value = maxf(1.0, float(mon.get("max_hp", 1)))\n\t\tnet_hp.value = float(mon.get("hp", 0))\n\t\tnet_hp.custom_minimum_size.y = 16\n\t\tvar net_hp_fill := StyleBoxFlat.new()\n\t\tvar hp_ratio := net_hp.value / net_hp.max_value\n\t\tnet_hp_fill.bg_color = Color("#65a94d") if hp_ratio > 0.5 else (Color("#d6b64e") if hp_ratio > 0.2 else Color("#c75a4a"))\n\t\tnet_hp.add_theme_stylebox_override("fill", net_hp_fill)\n\t\tcontent.add_child(net_hp)\n'
+if hp_anchor not in s:
+    raise SystemExit("Could not locate LAN HP display")
+s = s.replace(hp_anchor, hp_extra, 1)
 main.write_text(s, encoding="utf-8")
 print("Applied phase-2 pixel battlefield, GBA HP HUD and two-column skill menu; LAN actions/state flow preserved.")
