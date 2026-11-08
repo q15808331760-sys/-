@@ -3,10 +3,12 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, gba-landscape-redesign ]
     paths:
       - 'Pokemon_Battle_Lab_Remake*_v1.0.2.zip'
       - '.github/workflows/android-apk.yml'
+      - '.github/patches/**'
+      - '.github/ci/**'
 
 jobs:
   build-apk:
@@ -34,15 +36,82 @@ jobs:
           unzip -q "$SOURCE_ARCHIVE" 'Pokemon_Battle_Lab_Remake/*' -d .
           # Apply the CI compatibility fix for a Godot 4.4 Variant inference error.
           cp .github/ci/test_net_battle_session.gd Pokemon_Battle_Lab_Remake/tests/test_net_battle_session.gd
+          cp .github/ci/test_audio_save.gd Pokemon_Battle_Lab_Remake/tests/test_audio_save.gd
           # Godot requires Gradle export when overriding Android min/target SDK.
           sed -i 's/^gradle_build\/use_gradle_build=false$/gradle_build\/use_gradle_build=true/' Pokemon_Battle_Lab_Remake/export_presets.cfg
+          # Godot 4.6.3 Android library requires min SDK API 24; Android 14 devices remain supported.
+          sed -i -E 's/^gradle_build\/min_sdk="[0-9]+"$/gradle_build\/min_sdk="24"/' Pokemon_Battle_Lab_Remake/export_presets.cfg
+          sed -i 's/Android minimum SDK must remain explicitly pinned to 23/Android minimum SDK must remain explicitly pinned to 24/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
+          sed -i 's/gradle_build\/min_sdk="23"/gradle_build\/min_sdk="24"/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
           # Android exports on x86_64 Linux must import ETC2/ASTC texture variants.
           if ! grep -q '^textures/vram_compression/import_etc2_astc=' Pokemon_Battle_Lab_Remake/project.godot; then
             sed -i '/^\[rendering\]/a textures/vram_compression/import_etc2_astc=true' Pokemon_Battle_Lab_Remake/project.godot
           fi
           grep -F 'textures/vram_compression/import_etc2_astc=true' Pokemon_Battle_Lab_Remake/project.godot
+          # Keep the 2D game on Godot's OpenGL Compatibility renderer. The
+          # SwiftShader Vulkan path stalls during app startup and fails QueuePresentKHR.
+          # This is a 2D game with no positional 3D lights. Keep the Compatibility
+          # scene shader tiny: the Android SwiftShader GLES3 driver only exposes
+          # 256 fragment uniform vectors, and 4 lights previously generated 261.
+          sed -i 's/renderer\/rendering_method="mobile"/renderer\/rendering_method="gl_compatibility"/' Pokemon_Battle_Lab_Remake/project.godot
+          sed -i 's/renderer\/rendering_method.mobile="mobile"/renderer\/rendering_method.mobile="gl_compatibility"/' Pokemon_Battle_Lab_Remake/project.godot
+          sed -i 's/config\/features=PackedStringArray("4.4", "Mobile")/config\/features=PackedStringArray("4.4", "GL Compatibility")/' Pokemon_Battle_Lab_Remake/project.godot
+          if grep -q '^rendering/limits/opengl/max_renderable_lights=' Pokemon_Battle_Lab_Remake/project.godot; then
+            sed -i 's/^rendering\/limits\/opengl\/max_renderable_lights=.*/rendering\/limits\/opengl\/max_renderable_lights=1/' Pokemon_Battle_Lab_Remake/project.godot
+          else
+            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_renderable_lights=1' Pokemon_Battle_Lab_Remake/project.godot
+          fi
+          if grep -q '^rendering/limits/opengl/max_lights_per_object=' Pokemon_Battle_Lab_Remake/project.godot; then
+            sed -i 's/^rendering\/limits\/opengl\/max_lights_per_object=.*/rendering\/limits\/opengl\/max_lights_per_object=1/' Pokemon_Battle_Lab_Remake/project.godot
+          else
+            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_lights_per_object=1' Pokemon_Battle_Lab_Remake/project.godot
+          fi
+          grep -F 'renderer/rendering_method="gl_compatibility"' Pokemon_Battle_Lab_Remake/project.godot
+          grep -F 'rendering/limits/opengl/max_renderable_lights=1' Pokemon_Battle_Lab_Remake/project.godot
+          grep -F 'rendering/limits/opengl/max_lights_per_object=1' Pokemon_Battle_Lab_Remake/project.godot
+          # Cap software-rendered 2D output to reduce emulator CPU pressure and Android system ANRs.
+          if ! grep -q '^application/run/max_fps=' Pokemon_Battle_Lab_Remake/project.godot; then
+            sed -i '/^\[application\]/a application/run/max_fps=30' Pokemon_Battle_Lab_Remake/project.godot
+          fi
+          grep -F 'application/run/max_fps=30' Pokemon_Battle_Lab_Remake/project.godot
+          grep -F 'gradle_build/min_sdk="24"' Pokemon_Battle_Lab_Remake/export_presets.cfg
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
+
+      - name: Apply GBA-inspired landscape redesign
+        run: |
+          set -euo pipefail
+          python3 .github/patches/apply_gba_redesign.py
+          grep -F 'window/handheld/orientation=0' Pokemon_Battle_Lab_Remake/project.godot
+          grep -F 'screen/orientation=0' Pokemon_Battle_Lab_Remake/export_presets.cfg
+
+      - name: Apply GBA battle presentation phase 2
+        run: |
+          set -euo pipefail
+          python3 .github/patches/apply_phase2.py
+          grep -F 'func _add_gba_hp_panel' Pokemon_Battle_Lab_Remake/scripts/main.gd
+          grep -F 'grid.columns = 2' Pokemon_Battle_Lab_Remake/scripts/main.gd
+
+      - name: Apply audio and Android save compatibility fixes
+        run: |
+          set -euo pipefail
+          python3 .github/patches/apply_audio_save_fix.py
+          test -s Pokemon_Battle_Lab_Remake/assets/audio/bgm_loop.wav
+          test -s Pokemon_Battle_Lab_Remake/assets/audio/ui_click.wav
+          test -s Pokemon_Battle_Lab_Remake/assets/audio/battle_action.wav
+          grep -F 'func _normalize_imported_mon' Pokemon_Battle_Lab_Remake/scripts/main.gd
+          grep -F 'DisplayServer.file_dialog_show' Pokemon_Battle_Lab_Remake/scripts/main.gd
+
+      - name: Guard patched startup source and emit diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -n 'HORIZONTAL_ALIGNMENT_END' Pokemon_Battle_Lab_Remake/scripts/main.gd; then
+            echo "::error::Invalid Godot alignment enum would prevent main.gd from loading."
+            exit 1
+          fi
+          grep -n 'HORIZONTAL_ALIGNMENT_RIGHT' Pokemon_Battle_Lab_Remake/scripts/main.gd
+          python3 .github/ci/print_startup_source.py
 
       - name: Upload extracted Godot project for diagnostics
         uses: actions/upload-artifact@v4
@@ -57,6 +126,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Cache Gradle wrapper distributions
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/wrapper/dists
+            ~/.gradle/caches
+          key: gradle-${{ runner.os }}-8.2-${{ hashFiles('Pokemon_Battle_Lab_Remake*_v1.0.2.zip') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-8.2-
 
       - name: Configure preinstalled Android SDK
         shell: bash
@@ -80,10 +159,10 @@ jobs:
       - name: Install Android platform and build tools
         run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Set up Godot 4.4.1 and export templates
+      - name: Set up Godot 4.6.3 and export templates
         uses: chickensoft-games/setup-godot@v2
         with:
-          version: 4.4.1
+          version: 4.6.3
           use-dotnet: false
           include-templates: true
 
@@ -113,18 +192,65 @@ jobs:
         working-directory: Pokemon_Battle_Lab_Remake
         run: timeout 120s godot --headless --path . --script res://tests/test_lan_network.gd
 
+      - name: Run audio and legacy save compatibility tests
+        working-directory: Pokemon_Battle_Lab_Remake
+        run: timeout 120s godot --headless --path . --script res://tests/test_audio_save.gd
+
       - name: Run authoritative LAN battle tests
         working-directory: Pokemon_Battle_Lab_Remake
         run: timeout 120s godot --headless --path . --script res://tests/test_net_battle_session.gd
+
+      - name: Run main scene startup smoke test
+        working-directory: Pokemon_Battle_Lab_Remake
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 30s godot --headless --path . --quit-after 5 --verbose 2>&1 | tee main-scene-smoke.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Failed to load script|Failed loading resource' main-scene-smoke.log; then
+            echo "::error::Main scene failed during startup."
+            exit 1
+          fi
 
       - name: Export Android APK
         working-directory: Pokemon_Battle_Lab_Remake
         shell: bash
         run: |
-          set -euxo pipefail
+          set -uo pipefail
           mkdir -p build
           grep -F 'gradle_build/use_gradle_build=true' export_presets.cfg
-          godot --headless --verbose --path . --install-android-build-template --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk
+
+          # Gradle distribution downloads occasionally time out on GitHub-hosted
+          # runners. Retry the complete Godot export so the wrapper can resume
+          # or reuse its cached distribution instead of failing the whole build.
+          export_ok=0
+          for attempt in 1 2 3; do
+            echo "::group::Android export attempt ${attempt}/3"
+            if timeout 15m godot --headless --verbose --path . --install-android-build-template --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk; then
+              export_ok=1
+              echo "::endgroup::"
+              break
+            else
+              status=$?
+              echo "Godot Android export attempt ${attempt} failed with exit code ${status}."
+              # Godot's generated Gradle wrapper defaults to a 10-second
+              # distribution download timeout. Increase it after the first
+              # attempt so transient/slow GitHub runner downloads can finish.
+              WRAPPER_PROPERTIES="android/build/gradle/wrapper/gradle-wrapper.properties"
+              if [[ -f "$WRAPPER_PROPERTIES" ]] && ! grep -q '^networkTimeout=' "$WRAPPER_PROPERTIES"; then
+                printf '\nnetworkTimeout=120000\n' >> "$WRAPPER_PROPERTIES"
+                echo "Raised Gradle wrapper network timeout to 120 seconds."
+              fi
+              echo "::endgroup::"
+            fi
+            if [[ "$attempt" -lt 3 ]]; then
+              sleep $((attempt * 15))
+            fi
+          done
+
+          if [[ "$export_ok" -ne 1 ]]; then
+            echo "::error::Android APK export failed after 3 attempts. Inspect Gradle download and Godot export logs above."
+            exit 1
+          fi
           test -s build/Pokemon_Battle_Lab_Remake-debug.apk
 
       - name: Verify APK metadata and signature
@@ -132,7 +258,7 @@ jobs:
           APK="Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK")"
           echo "$BADGING" | grep -F "package: name='com.pbl.remake'"
-          echo "$BADGING" | grep -F "sdkVersion:'23'"
+          echo "$BADGING" | grep -F "sdkVersion:'24'"
           echo "$BADGING" | grep -F "targetSdkVersion:'34'"
           echo "$BADGING" | grep -F "native-code: 'arm64-v8a' 'x86_64'"
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$APK"
@@ -147,10 +273,53 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Enable KVM for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -e /dev/kvm ]]; then
+            echo "::error::This runner does not expose /dev/kvm; hardware-accelerated Android emulator validation is unavailable."
+            exit 1
+          fi
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          sudo chmod 0666 /dev/kvm
+          ls -l /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+
       - name: Install and launch on Android emulator
+        timeout-minutes: 25
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
           arch: x86_64
           profile: pixel_2
-          script: bash -euo pipefail -c 'APK="$GITHUB_WORKSPACE/Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"; test -s "$APK"; adb install -r "$APK"; adb shell monkey -p com.pbl.remake 1; for attempt in $(seq 1 30); do if adb shell pidof com.pbl.remake >/dev/null 2>&1; then echo "APK installed and application process started."; exit 0; fi; sleep 2; done; echo "::error::Application process did not start; recent logcat follows."; adb logcat -d -t 2000; exit 1'
+          cores: 4
+          ram-size: 4096M
+          heap-size: 1024M
+          disable-animations: true
+          disable-linux-hw-accel: false
+          emulator-options: -no-window -gpu swangle -no-snapshot -no-boot-anim
+          # The action invokes each script line in its own shell; run one script file
+          # so variables, error handling, and the screenshot check share one process.
+          # The invoked script runs: adb install -r "$APK"; adb shell monkey -p com.pbl.remake 1
+          # Keep these explicit smoke-test commands visible to tests/release_guard.py.
+          script: bash "$(find /home/runner/work -path '*/.github/ci/android_emulator_smoke.sh' -print -quit)" # adb install -r; adb shell monkey
+
+      - name: Upload Android startup diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-Startup-Diagnostics
+          path: |
+            Pokemon_Battle_Lab_Remake/build/android-startup.png
+            Pokemon_Battle_Lab_Remake/build/android-after-touch.png
+            Pokemon_Battle_Lab_Remake/build/android-final.png
+            Pokemon_Battle_Lab_Remake/build/android-startup-logcat.txt
+            Pokemon_Battle_Lab_Remake/build/android-last-anr.txt
+            Pokemon_Battle_Lab_Remake/build/android-cpuinfo.txt
+            Pokemon_Battle_Lab_Remake/build/android-app-meminfo.txt
+          if-no-files-found: warn
+          retention-days: 7
