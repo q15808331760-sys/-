@@ -121,3 +121,78 @@ if needle not in s:
 s = s.replace(needle, arena, 1)
 main.write_text(s, encoding="utf-8")
 print("Applied GBA-inspired palette, square panels, landscape orientation, and battle arena layout.")
+
+# Phase 2: generate an original GBA-era field backdrop and skin the battle HUD.
+import base64
+asset_source = Path(__file__).resolve().parents[1] / "assets" / "field_grass.b64"
+assets = root / "assets" / "battle"
+assets.mkdir(parents=True, exist_ok=True)
+(assets / "field_grass.png").write_bytes(base64.b64decode(asset_source.read_text(encoding="ascii").strip()))
+
+s = main.read_text(encoding="utf-8")
+start = s.find("\\tvar arena := PanelContainer.new()", s.find("func _page_battle()"))
+end = s.find("\\tvar field_row := HBoxContainer.new()", start)
+if start < 0 or end < 0:
+    raise SystemExit("Could not locate phase-1 battle arena block; refusing partial phase-2 patch")
+new_arena = """\\tvar arena := TextureRect.new()
+\\tarena.custom_minimum_size = Vector2(0, 230)
+\\tarena.texture = load("res://assets/battle/field_grass.png")
+\\tarena.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+\\tarena.stretch_mode = TextureRect.STRETCH_SCALE
+\\tarena.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+\\tcontent.add_child(arena)
+\\tvar arena_row := HBoxContainer.new()
+\\tarena_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+\\tarena_row.add_theme_constant_override("separation", 24)
+\\tarena.add_child(arena_row)
+\\tvar red_stage := PanelContainer.new()
+\\tred_stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+\\tred_stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
+\\tred_stage.add_theme_stylebox_override("panel", _panel_style(Color("#e8edcf"), Color("#405a43"), 0, 8))
+\\tvar red_label := Label.new()
+\\tred_label.text = "◆\\n%s\\n我方" % str(battle.red.get("name", "宝可梦"))
+\\tred_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+\\tred_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+\\tred_label.add_theme_font_size_override("font_size", 23)
+\\tred_stage.add_child(red_label)
+\\tarena_row.add_child(red_stage)
+\\tvar vs_label := Label.new()
+\\tvs_label.text = "VS"
+\\tvs_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+\\tvs_label.add_theme_font_size_override("font_size", 24)
+\\tarena_row.add_child(vs_label)
+\\tvar blue_stage := PanelContainer.new()
+\\tblue_stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+\\tblue_stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
+\\tblue_stage.add_theme_stylebox_override("panel", _panel_style(Color("#d9e7e7"), Color("#59757a"), 0, 8))
+\\tvar blue_label := Label.new()
+\\tblue_label.text = "%s\\n◆\\n对手" % str(battle.blue.get("name", "宝可梦"))
+\\tblue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+\\tblue_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+\\tblue_label.add_theme_font_size_override("font_size", 23)
+\\tblue_stage.add_child(blue_label)
+\\tarena_row.add_child(blue_stage)
+"""
+s = s[:start] + new_arena + s[end:]
+old = "\\tvar action_row := HBoxContainer.new()\\n\\tcontent.add_child(action_row)\\n\\tvar move_names: Array = battle.red.moves"
+new = "\\tvar action_row := GridContainer.new()\\n\\taction_row.columns = 2\\n\\taction_row.add_theme_constant_override(\\"h_separation\\", 8)\\n\\taction_row.add_theme_constant_override(\\"v_separation\\", 8)\\n\\tcontent.add_child(action_row)\\n\\tvar move_names: Array = battle.red.moves"
+if old not in s:
+    raise SystemExit("Could not locate local battle skill menu")
+s = s.replace(old, new, 1)
+old = "\\t\\tvar box := PanelContainer.new()\\n\\t\\tbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL\\n\\t\\tsides.add_child(box)"
+new = "\\t\\tvar box := PanelContainer.new()\\n\\t\\tbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL\\n\\t\\tbox.add_theme_stylebox_override(\\"panel\\", _panel_style(Color(\\"#fff8df\\"), Color(\\"#526b50\\"), 0, 9))\\n\\t\\tsides.add_child(box)"
+if old not in s:
+    raise SystemExit("Could not locate battle HUD cards")
+s = s.replace(old, new, 1)
+old = "\\t\\tvar hp := ProgressBar.new()\\n\\t\\thp.max_value = mon.max_hp"
+new = "\\t\\tvar hp := ProgressBar.new()\\n\\t\\tvar hp_bg := StyleBoxFlat.new()\\n\\t\\thp_bg.bg_color = Color(\\"#d8d6b9\\")\\n\\t\\thp.add_theme_stylebox_override(\\"background\\", hp_bg)\\n\\t\\tvar hp_fill := StyleBoxFlat.new()\\n\\t\\thp_fill.bg_color = Color(\\"#65a94d\\") if float(mon.hp) / maxf(1.0, float(mon.max_hp)) > 0.5 else (Color(\\"#d6b64e\\") if float(mon.hp) / maxf(1.0, float(mon.max_hp)) > 0.2 else Color(\\"#c75a4a\\"))\\n\\t\\thp.add_theme_stylebox_override(\\"fill\\", hp_fill)\\n\\t\\thp.max_value = mon.max_hp"
+if old not in s:
+    raise SystemExit("Could not locate local HP bar")
+s = s.replace(old, new, 1)
+needle = "\\tnet_connection_label = _add_label(\\"网络连接状态：%s\\" % lan_network.get_connection_state(), 14)\\n"
+net = needle + "\\tvar net_arena := TextureRect.new()\\n\\tnet_arena.custom_minimum_size = Vector2(0, 180)\\n\\tnet_arena.texture = load(\\"res://assets/battle/field_grass.png\\")\\n\\tnet_arena.expand_mode = TextureRect.EXPAND_IGNORE_SIZE\\n\\tnet_arena.stretch_mode = TextureRect.STRETCH_SCALE\\n\\tnet_arena.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST\\n\\tcontent.add_child(net_arena)\\n\\tvar net_caption := Label.new()\\n\\tnet_caption.text = \\"GBA LINK BATTLE  ·  局域网对战\\"\\n\\tnet_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER\\n\\tnet_caption.add_theme_font_size_override(\\"font_size\\", 20)\\n\\tnet_arena.add_child(net_caption)\\n"
+if needle not in s:
+    raise SystemExit("Could not locate LAN battle HUD insertion point")
+s = s.replace(needle, net, 1)
+main.write_text(s, encoding="utf-8")
+print("Applied phase-2 pixel battlefield, GBA HP HUD and two-column skill menu; LAN actions/state flow preserved.")
