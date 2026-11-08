@@ -2,6 +2,14 @@
 set -euo pipefail
 WORK_ROOT="/home/runner/work"
 PACKAGE="com.pbl.remake"
+
+# Bound every adb call: an unresponsive emulator/adb server must fail with
+# diagnostics instead of keeping the Actions step alive until its outer timeout.
+adb() {
+  local limit=30
+  [[ "${1:-}" == "wait-for-device" ]] && limit=180
+  timeout --foreground "${limit}s" command adb "$@"
+}
 APK="$(find "$WORK_ROOT" -type f -path '*/Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk' -print -quit)"
 if [[ -z "$APK" || ! -s "$APK" ]]; then
   echo "::error::Built APK was not found under $WORK_ROOT"
@@ -13,6 +21,7 @@ OUT="$(dirname "$APK")"
 collect_startup_diagnostics() {
   local status=$?
   mkdir -p "$OUT"
+  echo "Collecting logcat, screenshot, ANR, CPU and app memory diagnostics..."
   adb logcat -d -v threadtime > "$OUT/android-startup-logcat.txt" 2>&1 || true
   adb exec-out screencap -p > "$OUT/android-startup.png" 2>/dev/null || true
   adb shell dumpsys activity lastanr > "$OUT/android-last-anr.txt" 2>&1 || true
@@ -24,7 +33,9 @@ trap collect_startup_diagnostics EXIT
 trap 'exit 124' TERM INT
 echo "Using APK: $APK"
 
+echo "Waiting for emulator device..."
 adb wait-for-device
+echo "Emulator device connected; waiting for Android boot completion."
 BOOT_COMPLETED=""
 for attempt in $(seq 1 150); do
   BOOT_COMPLETED="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
@@ -43,8 +54,10 @@ adb shell settings put global transition_animation_scale 0 || true
 adb shell settings put global animator_duration_scale 0 || true
 # Let first-boot package manager, telephony and SystemUI work settle.
 sleep 45
+echo "Clearing logcat and installing APK..."
 adb logcat -c
 adb install -r "$APK"
+echo "APK installation completed; verifying package and launching app."
 adb shell pm path "$PACKAGE" | grep -q '^package:'
 adb shell monkey -p "$PACKAGE" 1
 
@@ -110,7 +123,7 @@ fi
 # Let Godot's renderer initialize after Android has resumed the activity.
 sleep 35
 dismiss_blocking_dialogs
-python3 -m pip install --user pillow
+timeout --foreground 90s python3 -m pip install --user --disable-pip-version-check --retries 1 --timeout 10 pillow
 SCREEN_OK=""
 for attempt in $(seq 1 10); do
   adb exec-out screencap -p > "$OUT/android-startup.png"
