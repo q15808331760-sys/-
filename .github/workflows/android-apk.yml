@@ -203,10 +203,11 @@ jobs:
               export_ok=1
               echo "::endgroup::"
               break
+            else
+              status=$?
+              echo "Godot Android export attempt ${attempt} failed with exit code ${status}."
+              echo "::endgroup::"
             fi
-            status=$?
-            echo "Godot Android export attempt ${attempt} failed with exit code ${status}."
-            echo "::endgroup::"
             if [[ "$attempt" -lt 3 ]]; then
               sleep $((attempt * 15))
             fi
