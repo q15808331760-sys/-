@@ -181,8 +181,8 @@ jobs:
           profile: pixel_2
           script: |
             set -eu
-            APK="$GITHUB_WORKSPACE/Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"
-            OUT="$GITHUB_WORKSPACE/Pokemon_Battle_Lab_Remake/build"
+            APK="./Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"
+            OUT="./Pokemon_Battle_Lab_Remake/build"
             mkdir -p "$OUT"
             test -s "$APK"
             adb logcat -c
