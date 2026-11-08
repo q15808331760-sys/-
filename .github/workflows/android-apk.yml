@@ -8,6 +8,7 @@ on:
       - 'Pokemon_Battle_Lab_Remake*_v1.0.2.zip'
       - '.github/workflows/android-apk.yml'
       - '.github/patches/**'
+      - '.github/ci/**'
 
 jobs:
   build-apk:
@@ -181,6 +182,7 @@ jobs:
           profile: pixel_2
           # The action invokes each script line in its own shell; run one script file
           # so variables, error handling, and the screenshot check share one process.
+          # android_emulator_smoke.sh performs adb install, launch, and screenshot verification.
           script: bash "$(find /home/runner/work -path '*/.github/ci/android_emulator_smoke.sh' -print -quit)"
 
       - name: Upload Android startup diagnostics
