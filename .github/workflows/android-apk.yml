@@ -40,21 +40,25 @@ jobs:
           sed -i 's/^gradle_build\/use_gradle_build=false$/gradle_build\/use_gradle_build=true/' Pokemon_Battle_Lab_Remake/export_presets.cfg
           # Godot 4.4 Mobile renderer requires Android 9.0+ (API 28); do not
           # advertise API 23 support for a Vulkan-only Android build.
-          sed -i 's/^gradle_build\/min_sdk="23"$/gradle_build\/min_sdk="28"/' Pokemon_Battle_Lab_Remake/export_presets.cfg
-          sed -i 's/Android minimum SDK must remain explicitly pinned to 23/Android minimum SDK must remain explicitly pinned to 28/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
-          sed -i 's/gradle_build\/min_sdk="23"/gradle_build\/min_sdk="28"/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
+          sed -i 's/^gradle_build\/min_sdk="28"$/gradle_build\/min_sdk="23"/' Pokemon_Battle_Lab_Remake/export_presets.cfg
+          sed -i 's/Android minimum SDK must remain explicitly pinned to 28/Android minimum SDK must remain explicitly pinned to 23/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
+          sed -i 's/gradle_build\/min_sdk="28"/gradle_build\/min_sdk="23"/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
           # Android exports on x86_64 Linux must import ETC2/ASTC texture variants.
           if ! grep -q '^textures/vram_compression/import_etc2_astc=' Pokemon_Battle_Lab_Remake/project.godot; then
             sed -i '/^\[rendering\]/a textures/vram_compression/import_etc2_astc=true' Pokemon_Battle_Lab_Remake/project.godot
           fi
           grep -F 'textures/vram_compression/import_etc2_astc=true' Pokemon_Battle_Lab_Remake/project.godot
-          # SwiftShader GLES3 in the Android CI emulator cannot link Godot's
-          # Compatibility Canvas shader (261 fragment uniforms exceed its limit).
-          # Use Godot's Vulkan Mobile renderer for the Android build/smoke test.
-          sed -i 's/renderer\/rendering_method="gl_compatibility"/renderer\/rendering_method="mobile"/' Pokemon_Battle_Lab_Remake/project.godot
-          sed -i 's/renderer\/rendering_method.mobile="gl_compatibility"/renderer\/rendering_method.mobile="mobile"/' Pokemon_Battle_Lab_Remake/project.godot
-          sed -i 's/config\/features=PackedStringArray("4.4", "GL Compatibility")/config\/features=PackedStringArray("4.4", "Mobile")/' Pokemon_Battle_Lab_Remake/project.godot
-          grep -F 'renderer/rendering_method="mobile"' Pokemon_Battle_Lab_Remake/project.godot
+          # Keep the 2D game on Godot's OpenGL Compatibility renderer. The
+          # SwiftShader Vulkan path stalls during app startup and fails QueuePresentKHR.
+          # Lower Compatibility light limits to avoid the earlier 261-uniform shader link failure.
+          sed -i 's/renderer\/rendering_method="mobile"/renderer\/rendering_method="gl_compatibility"/' Pokemon_Battle_Lab_Remake/project.godot
+          sed -i 's/renderer\/rendering_method.mobile="mobile"/renderer\/rendering_method.mobile="gl_compatibility"/' Pokemon_Battle_Lab_Remake/project.godot
+          sed -i 's/config\/features=PackedStringArray("4.4", "Mobile")/config\/features=PackedStringArray("4.4", "GL Compatibility")/' Pokemon_Battle_Lab_Remake/project.godot
+          if ! grep -q '^rendering/limits/opengl/max_renderable_lights=' Pokemon_Battle_Lab_Remake/project.godot; then
+            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_renderable_lights=8\nrendering/limits/opengl/max_lights_per_object=4' Pokemon_Battle_Lab_Remake/project.godot
+          fi
+          grep -F 'renderer/rendering_method="gl_compatibility"' Pokemon_Battle_Lab_Remake/project.godot
+          grep -F 'rendering/limits/opengl/max_renderable_lights=8' Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
 
@@ -171,7 +175,7 @@ jobs:
           APK="Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK")"
           echo "$BADGING" | grep -F "package: name='com.pbl.remake'"
-          echo "$BADGING" | grep -F "sdkVersion:'28'"
+          echo "$BADGING" | grep -F "sdkVersion:'23'"
           echo "$BADGING" | grep -F "targetSdkVersion:'34'"
           echo "$BADGING" | grep -F "native-code: 'arm64-v8a' 'x86_64'"
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$APK"
