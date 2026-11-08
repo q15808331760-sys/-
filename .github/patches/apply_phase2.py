@@ -5,8 +5,8 @@ root = Path(__file__).resolve().parents[2] / "Pokemon_Battle_Lab_Remake"
 main = root / "scripts" / "main.gd"
 s = main.read_text(encoding="utf-8")
 def replace_func(text, name, next_name, body):
-    pattern = rf"func {re.escape(name)}\\(\\) -> void:\\n.*?(?=func {re.escape(next_name)}\\()"
-    out, n = re.subn(pattern, body.rstrip() + "\\n\\n", text, count=1, flags=re.S)
+    pattern = rf"func {re.escape(name)}\(\) -> void:\n.*?(?=func {re.escape(next_name)}\()"
+    out, n = re.subn(pattern, body.rstrip() + "\n\n", text, count=1, flags=re.S)
     if n != 1: raise SystemExit("Safe patch anchor failed: " + name)
     return out
 battle = r'''func _page_battle() -> void:
@@ -85,7 +85,7 @@ battle = r'''func _page_battle() -> void:
 		var move_name := str(moves[i])
 		var info := PBLBattleEngine.move_info(move_name)
 		var button := Button.new()
-		button.text = "%s\\n%s · %s" % [move_name, str(info.type), "状态招式" if str(info.category) == "status" else "威力 %d" % int(info.power)]
+		button.text = "%s\n%s · %s" % [move_name, str(info.type), "状态招式" if str(info.category) == "status" else "威力 %d" % int(info.power)]
 		button.custom_minimum_size = Vector2(0, 58)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.disabled = int(battle.red.hp) <= 0 or int(battle.blue.hp) <= 0
@@ -93,7 +93,7 @@ battle = r'''func _page_battle() -> void:
 		grid.add_child(button)
 	var log := RichTextLabel.new()
 	log.custom_minimum_size.y = 75
-	log.text = "\\n".join(log_lines)
+	log.text = "\n".join(log_lines)
 	content.add_child(log)
 	_add_action(content, "结束战斗 / 返回大厅", func():
 		battle.clear()
@@ -188,7 +188,7 @@ net = r'''func _page_net_battle() -> void:
 				var move_name := str(moves[i])
 				var info := PBLBattleEngine.move_info(move_name)
 				var button := Button.new()
-				button.text = "%s\\n%s · %s" % [move_name, str(info.type), "状态招式" if str(info.category) == "status" else "威力 %d" % int(info.power)]
+				button.text = "%s\n%s · %s" % [move_name, str(info.type), "状态招式" if str(info.category) == "status" else "威力 %d" % int(info.power)]
 				button.custom_minimum_size = Vector2(0, 58)
 				button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				button.pressed.connect(_submit_online_action.bind({"type":"move", "index":i}))
