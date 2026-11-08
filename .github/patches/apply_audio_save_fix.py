@@ -516,7 +516,7 @@ battle_new = """\tvar battle_row := HBoxContainer.new()
 if battle_old not in s:
     raise SystemExit("battle rendering anchor missing in generated main.gd")
 s = s.replace(battle_old, battle_new, 1)
-battle_helper = r'''func _make_battle_sprite(mon: Dictionary, pose: String) -> Control:
+battle_helper = '''func _make_battle_sprite(mon: Dictionary, pose: String) -> Control:
 	var image_data := str(mon.get("frontImage", mon.get("image", "")))
 	if pose == "back":
 		image_data = str(mon.get("backImage", ""))
