@@ -76,9 +76,6 @@ jobs:
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
 
-      - name: Emit extracted startup source for real-device diagnosis
-        run: python3 .github/ci/print_startup_source.py
-
       - name: Apply GBA-inspired landscape redesign
         run: |
           set -euo pipefail
@@ -92,6 +89,17 @@ jobs:
           python3 .github/patches/apply_phase2.py
           grep -F 'func _add_gba_hp_panel' Pokemon_Battle_Lab_Remake/scripts/main.gd
           grep -F 'grid.columns = 2' Pokemon_Battle_Lab_Remake/scripts/main.gd
+
+      - name: Guard patched startup source and emit diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -n 'HORIZONTAL_ALIGNMENT_END' Pokemon_Battle_Lab_Remake/scripts/main.gd; then
+            echo "::error::Invalid Godot alignment enum would prevent main.gd from loading."
+            exit 1
+          fi
+          grep -n 'HORIZONTAL_ALIGNMENT_RIGHT' Pokemon_Battle_Lab_Remake/scripts/main.gd
+          python3 .github/ci/print_startup_source.py
 
       - name: Upload extracted Godot project for diagnostics
         uses: actions/upload-artifact@v4
