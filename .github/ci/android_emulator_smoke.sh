@@ -9,6 +9,18 @@ if [[ -z "$APK" || ! -s "$APK" ]]; then
   exit 1
 fi
 OUT="$(dirname "$APK")"
+# Preserve evidence even when the emulator smoke test is killed by its timeout.
+collect_startup_diagnostics() {
+  local status=$?
+  mkdir -p "$OUT"
+  adb logcat -d -v threadtime > "$OUT/android-startup-logcat.txt" 2>&1 || true
+  adb exec-out screencap -p > "$OUT/android-startup.png" 2>/dev/null || true
+  adb shell dumpsys activity lastanr > "$OUT/android-last-anr.txt" 2>&1 || true
+  adb shell dumpsys cpuinfo > "$OUT/android-cpuinfo.txt" 2>&1 || true
+  adb shell dumpsys meminfo "$PACKAGE" > "$OUT/android-app-meminfo.txt" 2>&1 || true
+  echo "Collected Android startup diagnostics (exit=$status)."
+}
+trap collect_startup_diagnostics EXIT
 echo "Using APK: $APK"
 
 adb wait-for-device
