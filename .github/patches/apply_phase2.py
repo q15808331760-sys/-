@@ -40,7 +40,7 @@ battle = r'''func _page_battle() -> void:
 	fc.add_child(sky)
 	var enemy := Label.new()
 	enemy.text = "◢  " + str(battle.blue.get("name", "对手宝可梦"))
-	enemy.horizontal_alignment = HORIZONTAL_ALIGNMENT_END
+	enemy.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	enemy.add_theme_font_size_override("font_size", 22)
 	fc.add_child(enemy)
 	var grass := ColorRect.new()
@@ -154,7 +154,7 @@ net = r'''func _page_net_battle() -> void:
 	fc.add_child(sky)
 	var enemy := Label.new()
 	enemy.text = "◢  " + str(blue_party[bi].get("name", "蓝方宝可梦"))
-	enemy.horizontal_alignment = HORIZONTAL_ALIGNMENT_END
+	enemy.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	enemy.add_theme_font_size_override("font_size", 21)
 	fc.add_child(enemy)
 	var grass := ColorRect.new()
