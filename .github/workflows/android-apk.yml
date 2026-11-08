@@ -221,7 +221,7 @@ jobs:
               # attempt so transient/slow GitHub runner downloads can finish.
               WRAPPER_PROPERTIES="android/build/gradle/wrapper/gradle-wrapper.properties"
               if [[ -f "$WRAPPER_PROPERTIES" ]] && ! grep -q '^networkTimeout=' "$WRAPPER_PROPERTIES"; then
-                printf '\\nnetworkTimeout=120000\\n' >> "$WRAPPER_PROPERTIES"
+                printf '\nnetworkTimeout=120000\n' >> "$WRAPPER_PROPERTIES"
                 echo "Raised Gradle wrapper network timeout to 120 seconds."
               fi
               echo "::endgroup::"
