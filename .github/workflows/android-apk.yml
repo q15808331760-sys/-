@@ -3,10 +3,11 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, gba-landscape-redesign ]
     paths:
       - 'Pokemon_Battle_Lab_Remake*_v1.0.2.zip'
       - '.github/workflows/android-apk.yml'
+      - '.github/patches/**'
 
 jobs:
   build-apk:
@@ -43,6 +44,13 @@ jobs:
           grep -F 'textures/vram_compression/import_etc2_astc=true' Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
+
+      - name: Apply GBA-inspired landscape redesign
+        run: |
+          set -euo pipefail
+          python3 .github/patches/apply_gba_redesign.py
+          grep -F 'window/handheld/orientation=0' Pokemon_Battle_Lab_Remake/project.godot
+          grep -F 'screen/orientation=0' Pokemon_Battle_Lab_Remake/export_presets.cfg
 
       - name: Upload extracted Godot project for diagnostics
         uses: actions/upload-artifact@v4
