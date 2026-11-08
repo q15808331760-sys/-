@@ -38,8 +38,7 @@ jobs:
           cp .github/ci/test_net_battle_session.gd Pokemon_Battle_Lab_Remake/tests/test_net_battle_session.gd
           # Godot requires Gradle export when overriding Android min/target SDK.
           sed -i 's/^gradle_build\/use_gradle_build=false$/gradle_build\/use_gradle_build=true/' Pokemon_Battle_Lab_Remake/export_presets.cfg
-          # Godot 4.4 Mobile renderer requires Android 9.0+ (API 28); do not
-          # advertise API 23 support for a Vulkan-only Android build.
+          # The Compatibility renderer supports older Android devices; keep min SDK API 23.
           sed -i 's/^gradle_build\/min_sdk="28"$/gradle_build\/min_sdk="23"/' Pokemon_Battle_Lab_Remake/export_presets.cfg
           sed -i 's/Android minimum SDK must remain explicitly pinned to 28/Android minimum SDK must remain explicitly pinned to 23/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
           sed -i 's/gradle_build\/min_sdk="28"/gradle_build\/min_sdk="23"/' Pokemon_Battle_Lab_Remake/tests/release_guard.py
@@ -55,7 +54,8 @@ jobs:
           sed -i 's/renderer\/rendering_method.mobile="mobile"/renderer\/rendering_method.mobile="gl_compatibility"/' Pokemon_Battle_Lab_Remake/project.godot
           sed -i 's/config\/features=PackedStringArray("4.4", "Mobile")/config\/features=PackedStringArray("4.4", "GL Compatibility")/' Pokemon_Battle_Lab_Remake/project.godot
           if ! grep -q '^rendering/limits/opengl/max_renderable_lights=' Pokemon_Battle_Lab_Remake/project.godot; then
-            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_renderable_lights=8\nrendering/limits/opengl/max_lights_per_object=4' Pokemon_Battle_Lab_Remake/project.godot
+            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_renderable_lights=8' Pokemon_Battle_Lab_Remake/project.godot
+            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_lights_per_object=4' Pokemon_Battle_Lab_Remake/project.godot
           fi
           grep -F 'renderer/rendering_method="gl_compatibility"' Pokemon_Battle_Lab_Remake/project.godot
           grep -F 'rendering/limits/opengl/max_renderable_lights=8' Pokemon_Battle_Lab_Remake/project.godot
