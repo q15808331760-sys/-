@@ -52,6 +52,13 @@ jobs:
           grep -F 'window/handheld/orientation=0' Pokemon_Battle_Lab_Remake/project.godot
           grep -F 'screen/orientation=0' Pokemon_Battle_Lab_Remake/export_presets.cfg
 
+      - name: Apply GBA battle presentation phase 2
+        run: |
+          set -euo pipefail
+          python3 .github/patches/apply_phase2.py
+          grep -F 'func _add_gba_hp_panel' Pokemon_Battle_Lab_Remake/scripts/main.gd
+          grep -F 'grid.columns = 2' Pokemon_Battle_Lab_Remake/scripts/main.gd
+
       - name: Upload extracted Godot project for diagnostics
         uses: actions/upload-artifact@v4
         with:
