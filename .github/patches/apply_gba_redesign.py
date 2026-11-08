@@ -175,22 +175,22 @@ new_arena = """\tvar arena := TextureRect.new()
 """
 s = s[:start] + new_arena + s[end:]
 old = "\tvar action_row := HBoxContainer.new()\n\tcontent.add_child(action_row)\n\tvar move_names: Array = battle.red.moves"
-new = "\tvar action_row := GridContainer.new()\n\taction_row.columns = 2\n\taction_row.add_theme_constant_override(\\"h_separation\\", 8)\n\taction_row.add_theme_constant_override(\\"v_separation\\", 8)\n\tcontent.add_child(action_row)\n\tvar move_names: Array = battle.red.moves"
+new = "\tvar action_row := GridContainer.new()\n\taction_row.columns = 2\n\taction_row.add_theme_constant_override(\"h_separation\", 8)\n\taction_row.add_theme_constant_override(\"v_separation\", 8)\n\tcontent.add_child(action_row)\n\tvar move_names: Array = battle.red.moves"
 if old not in s:
     raise SystemExit("Could not locate local battle skill menu")
 s = s.replace(old, new, 1)
 old = "\t\tvar box := PanelContainer.new()\n\t\tbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL\n\t\tsides.add_child(box)"
-new = "\t\tvar box := PanelContainer.new()\n\t\tbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL\n\t\tbox.add_theme_stylebox_override(\\"panel\\", _panel_style(Color(\\"#fff8df\\"), Color(\\"#526b50\\"), 0, 9))\n\t\tsides.add_child(box)"
+new = "\t\tvar box := PanelContainer.new()\n\t\tbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL\n\t\tbox.add_theme_stylebox_override(\"panel\", _panel_style(Color(\"#fff8df\"), Color(\"#526b50\"), 0, 9))\n\t\tsides.add_child(box)"
 if old not in s:
     raise SystemExit("Could not locate battle HUD cards")
 s = s.replace(old, new, 1)
 old = "\t\tvar hp := ProgressBar.new()\n\t\thp.max_value = mon.max_hp"
-new = "\t\tvar hp := ProgressBar.new()\n\t\tvar hp_bg := StyleBoxFlat.new()\n\t\thp_bg.bg_color = Color(\\"#d8d6b9\\")\n\t\thp.add_theme_stylebox_override(\\"background\\", hp_bg)\n\t\tvar hp_fill := StyleBoxFlat.new()\n\t\thp_fill.bg_color = Color(\\"#65a94d\\") if float(mon.hp) / maxf(1.0, float(mon.max_hp)) > 0.5 else (Color(\\"#d6b64e\\") if float(mon.hp) / maxf(1.0, float(mon.max_hp)) > 0.2 else Color(\\"#c75a4a\\"))\n\t\thp.add_theme_stylebox_override(\\"fill\\", hp_fill)\n\t\thp.max_value = mon.max_hp"
+new = "\t\tvar hp := ProgressBar.new()\n\t\tvar hp_bg := StyleBoxFlat.new()\n\t\thp_bg.bg_color = Color(\"#d8d6b9\")\n\t\thp.add_theme_stylebox_override(\"background\", hp_bg)\n\t\tvar hp_fill := StyleBoxFlat.new()\n\t\thp_fill.bg_color = Color(\"#65a94d\") if float(mon.hp) / maxf(1.0, float(mon.max_hp)) > 0.5 else (Color(\"#d6b64e\") if float(mon.hp) / maxf(1.0, float(mon.max_hp)) > 0.2 else Color(\"#c75a4a\"))\n\t\thp.add_theme_stylebox_override(\"fill\", hp_fill)\n\t\thp.max_value = mon.max_hp"
 if old not in s:
     raise SystemExit("Could not locate local HP bar")
 s = s.replace(old, new, 1)
-needle = "\tnet_connection_label = _add_label(\\"网络连接状态：%s\\" % lan_network.get_connection_state(), 14)\n"
-net = needle + "\tvar net_arena := TextureRect.new()\n\tnet_arena.custom_minimum_size = Vector2(0, 180)\n\tnet_arena.texture = load(\\"res://assets/battle/field_grass.png\\")\n\tnet_arena.expand_mode = TextureRect.EXPAND_IGNORE_SIZE\n\tnet_arena.stretch_mode = TextureRect.STRETCH_SCALE\n\tnet_arena.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST\n\tcontent.add_child(net_arena)\n\tvar net_caption := Label.new()\n\tnet_caption.text = \\"GBA LINK BATTLE  ·  局域网对战\\"\n\tnet_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER\n\tnet_caption.add_theme_font_size_override(\\"font_size\\", 20)\n\tnet_arena.add_child(net_caption)\n"
+needle = "\tnet_connection_label = _add_label(\"网络连接状态：%s\" % lan_network.get_connection_state(), 14)\n"
+net = needle + "\tvar net_arena := TextureRect.new()\n\tnet_arena.custom_minimum_size = Vector2(0, 180)\n\tnet_arena.texture = load(\"res://assets/battle/field_grass.png\")\n\tnet_arena.expand_mode = TextureRect.EXPAND_IGNORE_SIZE\n\tnet_arena.stretch_mode = TextureRect.STRETCH_SCALE\n\tnet_arena.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST\n\tcontent.add_child(net_arena)\n\tvar net_caption := Label.new()\n\tnet_caption.text = \"GBA LINK BATTLE  ·  局域网对战\"\n\tnet_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER\n\tnet_caption.add_theme_font_size_override(\"font_size\", 20)\n\tnet_arena.add_child(net_caption)\n"
 if needle not in s:
     raise SystemExit("Could not locate LAN battle HUD insertion point")
 s = s.replace(needle, net, 1)
