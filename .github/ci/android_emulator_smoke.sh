@@ -8,7 +8,7 @@ PACKAGE="com.pbl.remake"
 adb() {
   local limit=30
   [[ "${1:-}" == "wait-for-device" ]] && limit=180
-  timeout --foreground "${limit}s" command adb "$@"
+  timeout --foreground "${limit}s" adb "$@"
 }
 APK="$(find "$WORK_ROOT" -type f -path '*/Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk' -print -quit)"
 if [[ -z "$APK" || ! -s "$APK" ]]; then
