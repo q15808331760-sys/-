@@ -339,5 +339,130 @@ func _load_external_save(path: String) -> void:
 '''
 s = s[:load_start] + load_body.rstrip() + "\n"
 
+
+# Restore the legacy front/back Pokemon artwork import flow in the native editor.
+# Godot 4.6 Android native file dialogs return SAF content:// URIs; read the
+# selected bytes through FileAccess, decode them, and persist normalized PNG
+# data URIs so the images survive save export/import.
+global_anchor = "var sfx_player: AudioStreamPlayer\n"
+if global_anchor not in s:
+    raise SystemExit("audio player variable anchor missing")
+s = s.replace(global_anchor, global_anchor + "var editing_front_image := \"\"\nvar editing_back_image := \"\"\nvar editor_image_preview: TextureRect\n", 1)
+
+editor_anchor = "\tvar name_edit := LineEdit.new()\n"
+editor_ui = r'''	editing_front_image = str(existing.get("frontImage", existing.get("image", "")))
+	editing_back_image = str(existing.get("backImage", ""))
+	var image_row := HBoxContainer.new()
+	content.add_child(image_row)
+	editor_image_preview = TextureRect.new()
+	editor_image_preview.custom_minimum_size = Vector2(132, 132)
+	editor_image_preview.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	editor_image_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	image_row.add_child(editor_image_preview)
+	_refresh_editor_image_preview()
+	var image_actions := VBoxContainer.new()
+	image_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	image_row.add_child(image_actions)
+	var front_image_btn := Button.new()
+	front_image_btn.text = "导入正面图片"
+	front_image_btn.pressed.connect(_pick_mon_image.bind("front"))
+	image_actions.add_child(front_image_btn)
+	var back_image_btn := Button.new()
+	back_image_btn.text = "导入背面图片"
+	back_image_btn.pressed.connect(_pick_mon_image.bind("back"))
+	image_actions.add_child(back_image_btn)
+	var clear_image_btn := Button.new()
+	clear_image_btn.text = "清除图片"
+	clear_image_btn.pressed.connect(_clear_mon_images)
+	image_actions.add_child(clear_image_btn)
+	_add_label("支持 PNG / JPG / WebP 图片；正面用于对手与图鉴，背面用于己方出战。图片会随存档保存。", 13)
+'''
+if editor_anchor not in s:
+    raise SystemExit("editor name field anchor missing")
+s = s.replace(editor_anchor, editor_ui + editor_anchor, 1)
+
+save_anchor = '"moves":move_list.slice(0, 4)}'
+if save_anchor not in s:
+    raise SystemExit("editor Pokemon dictionary anchor missing")
+s = s.replace(save_anchor, '"moves":move_list.slice(0, 4), "image":editing_front_image, "frontImage":editing_front_image, "backImage":editing_back_image}', 1)
+
+# Add image callbacks before the editor page function.
+page_anchor = "func _page_editor() -> void:\n"
+image_functions = r'''func _refresh_editor_image_preview() -> void:
+	if editor_image_preview == null:
+		return
+	var image_data := editing_front_image
+	if image_data.is_empty():
+		editor_image_preview.texture = null
+		return
+	var comma := image_data.find(",")
+	if comma < 0:
+		editor_image_preview.texture = null
+		return
+	var raw := Marshalls.base64_to_raw(image_data.substr(comma + 1))
+	var image := Image.new()
+	var err := image.load_png_from_buffer(raw)
+	if err != OK:
+		err = image.load_jpg_from_buffer(raw)
+	if err != OK:
+		err = image.load_webp_from_buffer(raw)
+	if err == OK:
+		editor_image_preview.texture = ImageTexture.create_from_image(image)
+	else:
+		editor_image_preview.texture = null
+
+func _pick_mon_image(pose: String) -> void:
+	var title := "导入宝可梦正面图片" if pose == "front" else "导入宝可梦背面图片"
+	var err := DisplayServer.file_dialog_show(
+		title, "", "", false,
+		DisplayServer.FILE_DIALOG_MODE_OPEN_FILE,
+		PackedStringArray(["*.png;PNG 图片;image/png", "*.jpg,*.jpeg;JPEG 图片;image/jpeg", "*.webp;WebP 图片;image/webp"]),
+		_on_mon_image_dialog.bind(pose)
+	)
+	if err != OK:
+		status_label.text = "无法打开图片选择窗口（错误码 %d）。" % err
+
+func _on_mon_image_dialog(success: bool, paths: PackedStringArray, _filter_index: int, pose: String) -> void:
+	if not success or paths.is_empty():
+		status_label.text = "已取消图片导入。"
+		return
+	var file := FileAccess.open(paths[0], FileAccess.READ)
+	if file == null:
+		status_label.text = "图片读取失败（错误码 %d）。" % FileAccess.get_open_error()
+		return
+	var bytes := file.get_buffer(file.get_length())
+	file.close()
+	if bytes.is_empty() or bytes.size() > 5 * 1024 * 1024:
+		status_label.text = "图片为空或超过 5 MB，请选择较小的图片。"
+		return
+	var image := Image.new()
+	var err := image.load_from_buffer(bytes)
+	if err != OK:
+		status_label.text = "图片格式无法解码，请使用 PNG、JPG 或 WebP。"
+		return
+	var scale := minf(1.0, 512.0 / maxf(float(image.get_width()), float(image.get_height())))
+	if scale < 1.0:
+		image.resize(maxi(1, roundi(image.get_width() * scale)), maxi(1, roundi(image.get_height() * scale)), Image.INTERPOLATE_LANCZOS)
+	var png_bytes := image.save_png_to_buffer()
+	var data_uri := "data:image/png;base64," + Marshalls.raw_to_base64(png_bytes)
+	if pose == "front":
+		editing_front_image = data_uri
+	else:
+		editing_back_image = data_uri
+	_refresh_editor_image_preview()
+	status_label.text = "图片导入成功：%s（已优化为 %d KB）" % [pose, roundi(float(png_bytes.size()) / 1024.0)]
+
+func _clear_mon_images() -> void:
+	editing_front_image = ""
+	editing_back_image = ""
+	_refresh_editor_image_preview()
+	status_label.text = "已清除当前宝可梦图片。"
+
+'''
+if page_anchor not in s:
+    raise SystemExit("editor page function anchor missing")
+s = s.replace(page_anchor, image_functions + page_anchor, 1)
+
+
 main.write_text(s, encoding="utf-8")
 print("Added Android SAF file picker import/export, v5 save migration, verified writes, and original chiptune audio.")
