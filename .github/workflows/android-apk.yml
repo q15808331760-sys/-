@@ -180,7 +180,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           script: |
-            set -euo pipefail
+            set -eu
             APK="$GITHUB_WORKSPACE/Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"
             OUT="$GITHUB_WORKSPACE/Pokemon_Battle_Lab_Remake/build"
             mkdir -p "$OUT"
