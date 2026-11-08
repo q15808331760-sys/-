@@ -180,6 +180,7 @@ jobs:
           api-level: 34
           arch: x86_64
           profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 4096 -cores 4
           # The action invokes each script line in its own shell; run one script file
           # so variables, error handling, and the screenshot check share one process.
           # The invoked script runs: adb install -r "$APK"; adb shell monkey -p com.pbl.remake 1
