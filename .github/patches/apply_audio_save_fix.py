@@ -436,7 +436,13 @@ func _on_mon_image_dialog(success: bool, paths: PackedStringArray, _filter_index
 		status_label.text = "图片为空或超过 5 MB，请选择较小的图片。"
 		return
 	var image := Image.new()
-	var err := image.load_from_buffer(bytes)
+	var err := ERR_UNAVAILABLE
+	if bytes.size() >= 8 and bytes.slice(0, 8) == PackedByteArray([137, 80, 78, 71, 13, 10, 26, 10]):
+		err = image.load_png_from_buffer(bytes)
+	elif bytes.size() >= 3 and bytes[0] == 255 and bytes[1] == 216 and bytes[2] == 255:
+		err = image.load_jpg_from_buffer(bytes)
+	elif bytes.size() >= 12 and bytes.slice(0, 4).get_string_from_ascii() == "RIFF" and bytes.slice(8, 12).get_string_from_ascii() == "WEBP":
+		err = image.load_webp_from_buffer(bytes)
 	if err != OK:
 		status_label.text = "图片格式无法解码，请使用 PNG、JPG 或 WebP。"
 		return
