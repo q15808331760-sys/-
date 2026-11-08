@@ -7,7 +7,17 @@ PACKAGE="com.pbl.remake"
 # diagnostics instead of keeping the Actions step alive until its outer timeout.
 adb() {
   local limit=30
-  [[ "${1:-}" == "wait-for-device" ]] && limit=180
+  case "${1:-}" in
+    wait-for-device) limit=180 ;;
+    install) limit=300 ;;       # A first install of a 56 MB Godot APK can be slow on a cold emulator.
+    logcat|exec-out) limit=60 ;;
+    shell)
+      case "${2:-}" in
+        monkey) limit=90 ;;
+        settings|dumpsys) limit=60 ;;
+      esac
+      ;;
+  esac
   timeout --foreground "${limit}s" adb "$@"
 }
 APK="$(find "$WORK_ROOT" -type f -path '*/Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk' -print -quit)"
@@ -35,7 +45,22 @@ echo "Using APK: $APK"
 
 echo "Waiting for emulator device..."
 adb wait-for-device
-echo "Emulator device connected; waiting for Android boot completion."
+echo "ADB transport detected; waiting for emulator to become fully online."
+DEVICE_STATE=""
+for attempt in $(seq 1 90); do
+  DEVICE_STATE="$(adb devices | awk '$1 ~ /^emulator-/ {print $2; exit}' || true)"
+  [[ "$DEVICE_STATE" == "device" ]] && break
+  if (( attempt % 10 == 0 )); then
+    echo "Emulator ADB state is '${DEVICE_STATE:-missing}' (attempt $attempt/90)."
+  fi
+  sleep 2
+done
+if [[ "$DEVICE_STATE" != "device" ]]; then
+  adb devices || true
+  echo "::error::Emulator ADB transport did not become online within 180 seconds."
+  exit 1
+fi
+echo "Emulator is online; waiting for Android boot completion."
 BOOT_COMPLETED=""
 for attempt in $(seq 1 150); do
   BOOT_COMPLETED="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
@@ -54,8 +79,9 @@ adb shell settings put global transition_animation_scale 0 || true
 adb shell settings put global animator_duration_scale 0 || true
 # Let first-boot package manager, telephony and SystemUI work settle.
 sleep 45
-echo "Clearing logcat and installing APK..."
+echo "Clearing logcat before APK installation..."
 adb logcat -c
+echo "Installing APK (up to 300 seconds on a cold emulator)..."
 adb install -r "$APK"
 echo "APK installation completed; verifying package and launching app."
 adb shell pm path "$PACKAGE" | grep -q '^package:'
