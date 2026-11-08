@@ -132,6 +132,17 @@ jobs:
         working-directory: Pokemon_Battle_Lab_Remake
         run: timeout 120s godot --headless --path . --script res://tests/test_net_battle_session.gd
 
+      - name: Run main scene startup smoke test
+        working-directory: Pokemon_Battle_Lab_Remake
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 30s godot --headless --path . --quit-after 5 --verbose 2>&1 | tee main-scene-smoke.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Failed to load script|Failed loading resource' main-scene-smoke.log; then
+            echo "::error::Main scene failed during startup."
+            exit 1
+          fi
+
       - name: Export Android APK
         working-directory: Pokemon_Battle_Lab_Remake
         shell: bash
@@ -168,4 +179,44 @@ jobs:
           api-level: 34
           arch: x86_64
           profile: pixel_2
-          script: bash -euo pipefail -c 'APK="$GITHUB_WORKSPACE/Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"; test -s "$APK"; adb install -r "$APK"; adb shell monkey -p com.pbl.remake 1; for attempt in $(seq 1 30); do if adb shell pidof com.pbl.remake >/dev/null 2>&1; then echo "APK installed and application process started."; exit 0; fi; sleep 2; done; echo "::error::Application process did not start; recent logcat follows."; adb logcat -d -t 2000; exit 1'
+          script: |
+            set -euo pipefail
+            APK="$GITHUB_WORKSPACE/Pokemon_Battle_Lab_Remake/build/Pokemon_Battle_Lab_Remake-debug.apk"
+            OUT="$GITHUB_WORKSPACE/Pokemon_Battle_Lab_Remake/build"
+            mkdir -p "$OUT"
+            test -s "$APK"
+            adb logcat -c
+            adb install -r "$APK"
+            adb shell monkey -p com.pbl.remake 1
+            sleep 6
+            adb exec-out screencap -p > "$OUT/android-startup.png"
+            adb logcat -d -v threadtime > "$OUT/android-startup-logcat.txt"
+            python3 -m pip install --user pillow
+            python3 - "$OUT/android-startup.png" <<'PY'
+            from PIL import Image
+            import sys
+
+            image = Image.open(sys.argv[1]).convert("RGB")
+            pixels = list(image.getdata())
+            gba_green = (183, 201, 154)
+            green_pixels = sum(
+                1 for pixel in pixels
+                if all(abs(pixel[channel] - gba_green[channel]) <= 12 for channel in range(3))
+            )
+            unique_colors = len(set(pixels))
+            print(f"Startup screenshot: {image.size}, unique_colors={unique_colors}, GBA_background_pixels={green_pixels}")
+            if green_pixels < 500 or unique_colors < 30:
+                print("::error::The main UI did not render its expected GBA background; see startup logcat.")
+                sys.exit(1)
+            PY
+
+      - name: Upload Android startup diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-Startup-Diagnostics
+          path: |
+            Pokemon_Battle_Lab_Remake/build/android-startup.png
+            Pokemon_Battle_Lab_Remake/build/android-startup-logcat.txt
+          if-no-files-found: warn
+          retention-days: 7
