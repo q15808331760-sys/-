@@ -189,10 +189,33 @@ jobs:
         working-directory: Pokemon_Battle_Lab_Remake
         shell: bash
         run: |
-          set -euxo pipefail
+          set -uo pipefail
           mkdir -p build
           grep -F 'gradle_build/use_gradle_build=true' export_presets.cfg
-          godot --headless --verbose --path . --install-android-build-template --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk
+
+          # Gradle distribution downloads occasionally time out on GitHub-hosted
+          # runners. Retry the complete Godot export so the wrapper can resume
+          # or reuse its cached distribution instead of failing the whole build.
+          export_ok=0
+          for attempt in 1 2 3; do
+            echo "::group::Android export attempt ${attempt}/3"
+            if timeout 15m godot --headless --verbose --path . --install-android-build-template --export-debug "Android APK" build/Pokemon_Battle_Lab_Remake-debug.apk; then
+              export_ok=1
+              echo "::endgroup::"
+              break
+            fi
+            status=$?
+            echo "Godot Android export attempt ${attempt} failed with exit code ${status}."
+            echo "::endgroup::"
+            if [[ "$attempt" -lt 3 ]]; then
+              sleep $((attempt * 15))
+            fi
+          done
+
+          if [[ "$export_ok" -ne 1 ]]; then
+            echo "::error::Android APK export failed after 3 attempts. Inspect Gradle download and Godot export logs above."
+            exit 1
+          fi
           test -s build/Pokemon_Battle_Lab_Remake-debug.apk
 
       - name: Verify APK metadata and signature
