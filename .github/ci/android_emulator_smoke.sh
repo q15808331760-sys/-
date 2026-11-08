@@ -12,10 +12,27 @@ OUT="$(dirname "$APK")"
 echo "Using APK: $APK"
 adb logcat -c
 adb install -r "$APK"
+# Confirm Package Manager registered the package before attempting to launch it.
+adb shell pm path com.pbl.remake | grep -q '^package:'
 adb shell monkey -p com.pbl.remake 1
 sleep 8
+
+# A successful adb install/monkey command alone does not prove the app stayed alive.
+APP_PID="$(adb shell pidof com.pbl.remake | tr -d '\r' || true)"
+if [[ -z "$APP_PID" ]]; then
+  adb logcat -d -v threadtime > "$OUT/android-startup-logcat.txt"
+  echo "::error::com.pbl.remake did not remain running after launch."
+  tail -n 120 "$OUT/android-startup-logcat.txt" || true
+  exit 1
+fi
+
 adb exec-out screencap -p > "$OUT/android-startup.png"
 adb logcat -d -v threadtime > "$OUT/android-startup-logcat.txt"
+if grep -E 'FATAL EXCEPTION|Fatal signal [0-9]+ \(SIG|Process: com\.pbl\.remake' "$OUT/android-startup-logcat.txt"; then
+  echo "::error::Android reported a fatal crash during startup."
+  exit 1
+fi
+
 python3 -m pip install --user pillow
 python3 - "$OUT/android-startup.png" <<'PY'
 from PIL import Image
