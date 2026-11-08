@@ -470,5 +470,92 @@ if page_anchor not in s:
 s = s.replace(page_anchor, image_functions + page_anchor, 1)
 
 
+
+# Display saved Pokemon artwork in the local battle scene.
+battle_old = """\tvar enemy := Label.new()
+\tenemy.text = "◢  " + str(battle.blue.get("name", "对手宝可梦"))
+\tenemy.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+\tenemy.add_theme_font_size_override("font_size", 22)
+\tfc.add_child(enemy)
+\tvar grass := ColorRect.new()
+\tgrass.color = Color("#78a957")
+\tgrass.custom_minimum_size.y = 12
+\tfc.add_child(grass)
+\tvar player := Label.new()
+\tplayer.text = "◤  " + str(battle.red.get("name", "我方宝可梦"))
+\tplayer.add_theme_font_size_override("font_size", 22)
+\tfc.add_child(player)"""
+battle_new = """\tvar battle_row := HBoxContainer.new()
+\tbattle_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+\tbattle_row.add_theme_constant_override("separation", 16)
+\tfc.add_child(battle_row)
+\tvar enemy_box := VBoxContainer.new()
+\tenemy_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+\tenemy_box.alignment = BoxContainer.ALIGNMENT_CENTER
+\tvar enemy := Label.new()
+\tenemy.text = "对手 · " + str(battle.blue.get("name", "对手宝可梦"))
+\tenemy.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+\tenemy.add_theme_font_size_override("font_size", 16)
+\tenemy_box.add_child(enemy)
+\tenemy_box.add_child(_make_battle_sprite(battle.blue, "front"))
+\tbattle_row.add_child(enemy_box)
+\tvar player_box := VBoxContainer.new()
+\tplayer_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+\tplayer_box.alignment = BoxContainer.ALIGNMENT_CENTER
+\tvar player := Label.new()
+\tplayer.text = "我方 · " + str(battle.red.get("name", "我方宝可梦"))
+\tplayer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+\tplayer.add_theme_font_size_override("font_size", 16)
+\tplayer_box.add_child(player)
+\tplayer_box.add_child(_make_battle_sprite(battle.red, "back"))
+\tbattle_row.add_child(player_box)
+\tvar grass := ColorRect.new()
+\tgrass.color = Color("#78a957")
+\tgrass.custom_minimum_size.y = 10
+\tfc.add_child(grass)"""
+if battle_old not in s:
+    raise SystemExit("battle rendering anchor missing in generated main.gd")
+s = s.replace(battle_old, battle_new, 1)
+battle_helper = r'''func _make_battle_sprite(mon: Dictionary, pose: String) -> Control:
+	var image_data := str(mon.get("frontImage", mon.get("image", "")))
+	if pose == "back":
+		image_data = str(mon.get("backImage", ""))
+		if image_data.is_empty():
+			image_data = str(mon.get("frontImage", mon.get("image", "")))
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	var sprite := TextureRect.new()
+	sprite.custom_minimum_size = Vector2(130, 112)
+	sprite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if not image_data.is_empty():
+		var comma := image_data.find(",")
+		if comma >= 0:
+			var raw := Marshalls.base64_to_raw(image_data.substr(comma + 1))
+			var image := Image.new()
+			var err := image.load_png_from_buffer(raw)
+			if err != OK:
+				err = image.load_jpg_from_buffer(raw)
+			if err != OK:
+				err = image.load_webp_from_buffer(raw)
+			if err == OK:
+				sprite.texture = ImageTexture.create_from_image(image)
+	column.add_child(sprite)
+	if sprite.texture == null:
+		var placeholder := Label.new()
+		placeholder.text = "尚未导入立绘"
+		placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		column.add_child(placeholder)
+	return column
+
+'''
+page_anchor = "func _page_battle() -> void:\n"
+if page_anchor not in s:
+    raise SystemExit("battle page function anchor missing")
+s = s.replace(page_anchor, battle_helper + page_anchor, 1)
+
+
 main.write_text(s, encoding="utf-8")
 print("Added Android SAF file picker import/export, v5 save migration, verified writes, and original chiptune audio.")
