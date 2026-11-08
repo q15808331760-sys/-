@@ -59,6 +59,11 @@ jobs:
           fi
           grep -F 'renderer/rendering_method="gl_compatibility"' Pokemon_Battle_Lab_Remake/project.godot
           grep -F 'rendering/limits/opengl/max_renderable_lights=8' Pokemon_Battle_Lab_Remake/project.godot
+          # Cap software-rendered 2D output to reduce emulator CPU pressure and Android system ANRs.
+          if ! grep -q '^application/run/max_fps=' Pokemon_Battle_Lab_Remake/project.godot; then
+            sed -i '/^\[application\]/a application/run/max_fps=30' Pokemon_Battle_Lab_Remake/project.godot
+          fi
+          grep -F 'application/run/max_fps=30' Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
 
@@ -216,5 +221,8 @@ jobs:
           path: |
             Pokemon_Battle_Lab_Remake/build/android-startup.png
             Pokemon_Battle_Lab_Remake/build/android-startup-logcat.txt
+            Pokemon_Battle_Lab_Remake/build/android-last-anr.txt
+            Pokemon_Battle_Lab_Remake/build/android-cpuinfo.txt
+            Pokemon_Battle_Lab_Remake/build/android-app-meminfo.txt
           if-no-files-found: warn
           retention-days: 7
