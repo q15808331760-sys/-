@@ -21,8 +21,18 @@ func _run() -> void:
 	if bgm == null or sfx == null:
 		_fail("Audio players were not initialized.")
 		return
-	if not (bgm.stream is AudioStreamWAV) or not bgm.playing:
-		_fail("Original background music did not load and start.")
+	if not (bgm.stream is AudioStreamWAV):
+		_fail("Original background music stream did not load.")
+		return
+	# Headless CI has no audio output device, so AudioStreamPlayer.playing is
+	# not a reliable assertion there. Verify each stream is loaded and selected.
+	main.call("_play_ui_sound")
+	if not (sfx.stream is AudioStreamWAV):
+		_fail("UI click sound stream was not assigned.")
+		return
+	main.call("_play_battle_sound")
+	if not (sfx.stream is AudioStreamWAV):
+		_fail("Battle sound stream was not assigned.")
 		return
 	if not ResourceLoader.exists("res://assets/audio/ui_click.wav") or not ResourceLoader.exists("res://assets/audio/battle_action.wav"):
 		_fail("One or more generated sound effects are missing.")
