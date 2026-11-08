@@ -48,6 +48,7 @@ if [[ -z "$APP_PID" || -z "$ACTIVITY_READY" ]]; then
 fi
 
 sleep 8
+python3 -m pip install --user pillow
 adb exec-out screencap -p > "$OUT/android-startup.png"
 set +e
 python3 - "$OUT/android-startup.png" <<'PY'
