@@ -281,6 +281,8 @@ jobs:
           name: Android-Startup-Diagnostics
           path: |
             Pokemon_Battle_Lab_Remake/build/android-startup.png
+            Pokemon_Battle_Lab_Remake/build/android-after-touch.png
+            Pokemon_Battle_Lab_Remake/build/android-final.png
             Pokemon_Battle_Lab_Remake/build/android-startup-logcat.txt
             Pokemon_Battle_Lab_Remake/build/android-last-anr.txt
             Pokemon_Battle_Lab_Remake/build/android-cpuinfo.txt
