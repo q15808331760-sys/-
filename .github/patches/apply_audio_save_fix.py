@@ -206,41 +206,6 @@ func _on_import_file_dialog(success: bool, paths: PackedStringArray, _filter_ind
 		return
 	_load_external_save(paths[0])
 
-func _normalize_imported_mon(mon: Dictionary) -> Dictionary:
-	var out: Dictionary = mon.duplicate(true)
-	var stats: Variant = out.get("stats", {})
-	if stats is Dictionary:
-		for key in ["hp", "atk", "def", "spa", "spd", "spe"]:
-			if stats.has(key):
-				out[key] = int(stats[key])
-	out["type"] = str(out.get("type", out.get("type1", "一般")))
-	out["type1"] = str(out.get("type1", out.get("type", "一般")))
-	out["type2"] = str(out.get("type2", ""))
-	out["ability"] = str(out.get("ability", "无"))
-	out["item"] = str(out.get("item", "无"))
-	out["nature"] = str(out.get("nature", "认真"))
-	for key in ["hp", "atk", "def", "spa", "spd", "spe"]:
-		if not out.has(key):
-			out[key] = 100 if key == "hp" else 80
-	var raw_moves: Variant = out.get("moves", [])
-	if raw_moves is Array:
-		var move_names: Array = []
-		var move_details: Array = []
-		for move in raw_moves:
-			if move is Dictionary:
-				move_details.append(move.duplicate(true))
-				move_names.append(str(move.get("name", "撞击")))
-			else:
-				move_names.append(str(move))
-		if not move_details.is_empty():
-			out["move_details"] = move_details
-		out["moves"] = move_names
-	else:
-		out["moves"] = ["撞击"]
-	if not out.has("name"):
-		out["name"] = "未命名宝可梦"
-	return out
-
 func _load_external_save(path: String) -> void:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
