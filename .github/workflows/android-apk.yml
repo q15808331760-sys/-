@@ -49,16 +49,25 @@ jobs:
           grep -F 'textures/vram_compression/import_etc2_astc=true' Pokemon_Battle_Lab_Remake/project.godot
           # Keep the 2D game on Godot's OpenGL Compatibility renderer. The
           # SwiftShader Vulkan path stalls during app startup and fails QueuePresentKHR.
-          # Lower Compatibility light limits to avoid the earlier 261-uniform shader link failure.
+          # This is a 2D game with no positional 3D lights. Keep the Compatibility
+          # scene shader tiny: the Android SwiftShader GLES3 driver only exposes
+          # 256 fragment uniform vectors, and 4 lights previously generated 261.
           sed -i 's/renderer\/rendering_method="mobile"/renderer\/rendering_method="gl_compatibility"/' Pokemon_Battle_Lab_Remake/project.godot
           sed -i 's/renderer\/rendering_method.mobile="mobile"/renderer\/rendering_method.mobile="gl_compatibility"/' Pokemon_Battle_Lab_Remake/project.godot
           sed -i 's/config\/features=PackedStringArray("4.4", "Mobile")/config\/features=PackedStringArray("4.4", "GL Compatibility")/' Pokemon_Battle_Lab_Remake/project.godot
-          if ! grep -q '^rendering/limits/opengl/max_renderable_lights=' Pokemon_Battle_Lab_Remake/project.godot; then
-            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_renderable_lights=8' Pokemon_Battle_Lab_Remake/project.godot
-            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_lights_per_object=4' Pokemon_Battle_Lab_Remake/project.godot
+          if grep -q '^rendering/limits/opengl/max_renderable_lights=' Pokemon_Battle_Lab_Remake/project.godot; then
+            sed -i 's/^rendering\/limits\/opengl\/max_renderable_lights=.*/rendering\/limits\/opengl\/max_renderable_lights=1/' Pokemon_Battle_Lab_Remake/project.godot
+          else
+            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_renderable_lights=1' Pokemon_Battle_Lab_Remake/project.godot
+          fi
+          if grep -q '^rendering/limits/opengl/max_lights_per_object=' Pokemon_Battle_Lab_Remake/project.godot; then
+            sed -i 's/^rendering\/limits\/opengl\/max_lights_per_object=.*/rendering\/limits\/opengl\/max_lights_per_object=1/' Pokemon_Battle_Lab_Remake/project.godot
+          else
+            sed -i '/^\[rendering\]/a rendering/limits/opengl/max_lights_per_object=1' Pokemon_Battle_Lab_Remake/project.godot
           fi
           grep -F 'renderer/rendering_method="gl_compatibility"' Pokemon_Battle_Lab_Remake/project.godot
-          grep -F 'rendering/limits/opengl/max_renderable_lights=8' Pokemon_Battle_Lab_Remake/project.godot
+          grep -F 'rendering/limits/opengl/max_renderable_lights=1' Pokemon_Battle_Lab_Remake/project.godot
+          grep -F 'rendering/limits/opengl/max_lights_per_object=1' Pokemon_Battle_Lab_Remake/project.godot
           # Cap software-rendered 2D output to reduce emulator CPU pressure and Android system ANRs.
           if ! grep -q '^application/run/max_fps=' Pokemon_Battle_Lab_Remake/project.godot; then
             sed -i '/^\[application\]/a application/run/max_fps=30' Pokemon_Battle_Lab_Remake/project.godot
