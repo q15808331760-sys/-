@@ -21,6 +21,7 @@ collect_startup_diagnostics() {
   echo "Collected Android startup diagnostics (exit=$status)."
 }
 trap collect_startup_diagnostics EXIT
+trap 'exit 124' TERM INT
 echo "Using APK: $APK"
 
 adb wait-for-device
