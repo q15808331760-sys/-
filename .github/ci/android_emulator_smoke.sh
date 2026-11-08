@@ -79,6 +79,12 @@ for attempt in $(seq 1 120); do
     ACTIVITY_READY="yes"
     break
   fi
+  # A system ANR dialog can steal foreground focus before Godot's activity
+  # becomes resumed. Dismiss it while waiting, not only after readiness.
+  if (( attempt % 10 == 0 )); then
+    echo "Foreground activity not ready (attempt $attempt); checking for Android system dialogs."
+    dismiss_blocking_dialogs
+  fi
   sleep 1
 done
 if [[ -z "$APP_PID" || -z "$ACTIVITY_READY" ]]; then
