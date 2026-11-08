@@ -6,7 +6,7 @@ main = root / "scripts" / "main.gd"
 s = main.read_text(encoding="utf-8")
 def replace_func(text, name, next_name, body):
     pattern = rf"func {re.escape(name)}\(\) -> void:\n.*?(?=func {re.escape(next_name)}\()"
-    out, n = re.subn(pattern, body.rstrip() + "\n\n", text, count=1, flags=re.S)
+    out, n = re.subn(pattern, lambda _match: body.rstrip() + "\n\n", text, count=1, flags=re.S)
     if n != 1: raise SystemExit("Safe patch anchor failed: " + name)
     return out
 battle = r'''func _page_battle() -> void:
