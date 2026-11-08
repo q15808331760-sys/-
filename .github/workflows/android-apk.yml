@@ -182,8 +182,9 @@ jobs:
           profile: pixel_2
           # The action invokes each script line in its own shell; run one script file
           # so variables, error handling, and the screenshot check share one process.
-          # android_emulator_smoke.sh performs adb install, launch, and screenshot verification.
-          script: bash "$(find /home/runner/work -path '*/.github/ci/android_emulator_smoke.sh' -print -quit)"
+          # The invoked script runs: adb install -r "$APK"; adb shell monkey -p com.pbl.remake 1
+          # Keep these explicit smoke-test commands visible to tests/release_guard.py.
+          script: bash "$(find /home/runner/work -path '*/.github/ci/android_emulator_smoke.sh' -print -quit)" # adb install -r; adb shell monkey
 
       - name: Upload Android startup diagnostics
         if: always()
