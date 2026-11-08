@@ -79,8 +79,12 @@ adb shell settings put global transition_animation_scale 0 || true
 adb shell settings put global animator_duration_scale 0 || true
 # Let first-boot package manager, telephony and SystemUI work settle.
 sleep 45
-echo "Clearing logcat before APK installation..."
-adb logcat -c
+echo "Clearing logcat before APK installation (best-effort)..."
+# Clearing the emulator log buffer is diagnostic housekeeping, not a release gate.
+# Do not abort installation when Android's log service is temporarily overloaded.
+if ! adb logcat -c; then
+  echo "::warning::Could not clear logcat within the allotted time; continuing with boot logs."
+fi
 echo "Installing APK (up to 300 seconds on a cold emulator)..."
 adb install -r "$APK"
 echo "APK installation completed; verifying package and launching app."
