@@ -43,6 +43,13 @@ jobs:
             sed -i '/^\[rendering\]/a textures/vram_compression/import_etc2_astc=true' Pokemon_Battle_Lab_Remake/project.godot
           fi
           grep -F 'textures/vram_compression/import_etc2_astc=true' Pokemon_Battle_Lab_Remake/project.godot
+          # SwiftShader GLES3 in the Android CI emulator cannot link Godot's
+          # Compatibility Canvas shader (261 fragment uniforms exceed its limit).
+          # Use Godot's Vulkan Mobile renderer for the Android build/smoke test.
+          sed -i 's/renderer\/rendering_method="gl_compatibility"/renderer\/rendering_method="mobile"/' Pokemon_Battle_Lab_Remake/project.godot
+          sed -i 's/renderer\/rendering_method.mobile="gl_compatibility"/renderer\/rendering_method.mobile="mobile"/' Pokemon_Battle_Lab_Remake/project.godot
+          sed -i 's/config\/features=PackedStringArray("4.4", "GL Compatibility")/config\/features=PackedStringArray("4.4", "Mobile")/' Pokemon_Battle_Lab_Remake/project.godot
+          grep -F 'renderer/rendering_method="mobile"' Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/project.godot
           test -f Pokemon_Battle_Lab_Remake/export_presets.cfg
 
