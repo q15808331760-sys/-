@@ -36,6 +36,7 @@ jobs:
           unzip -q "$SOURCE_ARCHIVE" 'Pokemon_Battle_Lab_Remake/*' -d .
           # Apply the CI compatibility fix for a Godot 4.4 Variant inference error.
           cp .github/ci/test_net_battle_session.gd Pokemon_Battle_Lab_Remake/tests/test_net_battle_session.gd
+          cp .github/ci/test_audio_save.gd Pokemon_Battle_Lab_Remake/tests/test_audio_save.gd
           # Godot requires Gradle export when overriding Android min/target SDK.
           sed -i 's/^gradle_build\/use_gradle_build=false$/gradle_build\/use_gradle_build=true/' Pokemon_Battle_Lab_Remake/export_presets.cfg
           # The Compatibility renderer supports older Android devices; keep min SDK API 23.
@@ -89,6 +90,16 @@ jobs:
           python3 .github/patches/apply_phase2.py
           grep -F 'func _add_gba_hp_panel' Pokemon_Battle_Lab_Remake/scripts/main.gd
           grep -F 'grid.columns = 2' Pokemon_Battle_Lab_Remake/scripts/main.gd
+
+      - name: Apply audio and Android save compatibility fixes
+        run: |
+          set -euo pipefail
+          python3 .github/patches/apply_audio_save_fix.py
+          test -s Pokemon_Battle_Lab_Remake/assets/audio/bgm_loop.wav
+          test -s Pokemon_Battle_Lab_Remake/assets/audio/ui_click.wav
+          test -s Pokemon_Battle_Lab_Remake/assets/audio/battle_action.wav
+          grep -F 'func _normalize_imported_mon' Pokemon_Battle_Lab_Remake/scripts/main.gd
+          grep -F 'DisplayServer.file_dialog_show' Pokemon_Battle_Lab_Remake/scripts/main.gd
 
       - name: Guard patched startup source and emit diagnostics
         shell: bash
@@ -179,6 +190,10 @@ jobs:
       - name: Run LAN network tests
         working-directory: Pokemon_Battle_Lab_Remake
         run: timeout 120s godot --headless --path . --script res://tests/test_lan_network.gd
+
+      - name: Run audio and legacy save compatibility tests
+        working-directory: Pokemon_Battle_Lab_Remake
+        run: timeout 120s godot --headless --path . --script res://tests/test_audio_save.gd
 
       - name: Run authoritative LAN battle tests
         working-directory: Pokemon_Battle_Lab_Remake
